@@ -1,0 +1,104 @@
+{{template "head" "conversation"}}
+<a class="back" href="/">&larr; all conversations</a>
+<span class="mono">{{.Conv.PeerAgent}} · {{if .Conv.Mode}}{{.Conv.Mode}}{{else}}ask{{end}}
+  <span class="tag t-{{.Conv.Status}}">{{.Conv.Status}}</span>
+  {{if .Poll.Stalled}}<span class="warn">quiet {{.Poll.SilentForS}}s</span>{{end}}
+  {{if .Poll.Activity}}<span class="mono" style="color:var(--dim)">· {{trim .Poll.Activity 70}}</span>{{end}}</span>
+<span class="clock mono">{{short .Conv.ID}}</span>
+</header>
+
+<main>
+<div class="toolbar"><label><input type="checkbox" id="live-refresh"> Live · every 5 seconds</label><a class="back" href="/api/c/{{.Conv.ID}}">JSON status</a></div>
+
+<section>
+  <div class="card stats">
+    <div class="stat"><b>{{tokens .Usage}}</b><span>tokens</span></div>
+    <div class="stat"><b>{{cachedInput .Conv.PeerAgent .Usage}}</b><span>cached input</span></div>
+    <div class="stat"><b>{{uncachedInput .Conv.PeerAgent .Usage}}</b><span>input without cache reads</span></div>
+    <div class="stat"><b>{{money .Usage.CostUSD}}</b><span>cost</span></div>
+    <div class="stat"><b>{{len .Turns}}</b><span>turns on this page</span></div>
+    <div class="stat"><b class="mono" style="font-size:13px">{{.Conv.NativeSessionID}}</b><span>native session</span></div>
+    <div class="stat"><b class="mono" style="font-size:13px">{{.Conv.ProjectCwd}}</b><span>cwd</span></div>
+    {{if or (eq .Poll.TurnStatus "running") (eq .Conv.Status "queued")}}
+    <div class="stat"><form method="post" action="/act/cancel">
+      <input type="hidden" name="conversation" value="{{.Conv.ID}}">
+      <input type="hidden" name="back" value="/c/{{.Conv.ID}}">
+      <button class="danger">cancel turn</button></form></div>
+    {{end}}
+  </div>
+</section>
+
+{{with .Poll.PendingApproval}}
+<section>
+  <h2>Waiting for a decision</h2>
+  <div class="card"><table>
+    <tr><td class="mono">{{.ID}}{{if .HumanGated}} <span class="tag t-queued">human</span>{{end}}</td>
+        <td>{{.Class}}</td>
+        <td class="mono">{{trim .Command 80}}</td>
+        <td style="white-space:nowrap">
+          <form method="post" action="/act/approve"><input type="hidden" name="request" value="{{.ID}}">
+            <input type="hidden" name="decision" value="accept">
+            <input type="hidden" name="back" value="/c/{{.ConversationID}}">
+            {{if or (eq .Class "user_input") (eq .Class "elicitation")}}
+              <input name="answer" placeholder="your answer" style="font:inherit;font-size:12px;padding:.2rem .4rem;border:1px solid var(--line);border-radius:5px;background:var(--bg);color:var(--ink)">
+            {{end}}
+            <button>accept</button></form>
+          <form method="post" action="/act/approve"><input type="hidden" name="request" value="{{.ID}}">
+            <input type="hidden" name="decision" value="decline">
+            <input type="hidden" name="back" value="/c/{{.ConversationID}}"><button class="danger">decline</button></form>
+        </td></tr>
+  </table></div>
+</section>
+{{end}}
+
+<section>
+  <h2>Turns · up to 50 per page</h2>
+  <p class="subtle">Cache reads are included in total tokens, not added again. Cache share uses total input including cache reads/writes. Missing provider cache measurements may appear as zero.</p>
+{{if .OlderTurns}}<p><a class="back" href="?turn_before={{.OlderTurns}}">Older turns</a></p>{{end}}
+  <div class="card">{{if .Turns}}<table>
+    <tr><th>turn</th><th>state</th><th>model</th><th class="num">in (provider)</th><th class="num">cached input</th><th class="num">out</th>
+        <th class="num">reasoning</th><th class="num">total</th><th class="num">cost</th><th class="num">took</th><th>timing</th><th>error</th></tr>
+    {{range .Turns}}
+    <tr>
+      <td class="mono">{{short .ID}}</td>
+      <td><span class="tag t-{{.Status}}">{{.Status}}</span></td>
+      <td class="mono">{{if .Usage.Model}}{{.Usage.Model}}{{else}}{{.Model}}{{end}}</td>
+      <td class="num mono">{{thousands .Usage.InputTokens}}</td>
+      <td class="num mono">{{cachedInput $.Conv.PeerAgent .Usage}}</td>
+      <td class="num mono">{{thousands .Usage.OutputTokens}}</td>
+      <td class="num mono">{{thousands .Usage.ReasoningTokens}}</td>
+      <td class="num mono">{{tokens .Usage}}</td>
+      <td class="num mono">{{money .Usage.CostUSD}}</td>
+      <td class="num mono" style="color:var(--dim)">{{.Took}}</td>
+      <td class="subtle">{{with .Timings}}queue {{ms .QueueMS}} · setup {{ms .SetupMS}} · submit {{ms .SubmitMS}}<br>first activity {{optionalMS .FirstActivityMS}} · first text {{optionalMS .FirstTextMS}}<br>approval {{ms .ApprovalMS}} · total {{ms .TotalMS}}{{else}}Not measured{{end}}</td>
+<td class="mono" style="color:var(--bad)">{{.Error}}</td>
+    </tr>{{end}}
+  </table>{{else}}<p class="empty">No turns yet.</p>{{end}}</div>
+</section>
+
+<section>
+  <h2>Dialogue · up to 100 messages per page</h2>
+{{if .OlderMessages}}<p><a class="back" href="?message_before={{.OlderMessages}}">Older messages</a></p>{{end}}
+  <div class="card">{{if .Messages}}{{range .Messages}}
+    <div class="msg {{.Role}}"><div class="who">{{.Role}}</div><pre>{{.Text}}</pre></div>
+  {{end}}{{else}}<p class="empty">Nothing said yet.</p>{{end}}</div>
+</section>
+
+<section>
+  <details>
+  <summary>Technical events · newest first · {{len .Events}} on this page</summary>
+  <p class="subtle">Raw event counters are diagnostic metadata, not additional token charges. Totals use reported turn usage.</p>
+  <div class="card">{{if .Events}}<table>
+    <tr><th class="num">seq</th><th>kind</th><th>turn</th><th>payload</th></tr>
+    {{range .Events}}
+    <tr><td class="num mono">{{.Seq}}</td>
+        <td class="mono">{{.Kind}}</td>
+        <td class="mono" style="color:var(--dim)">{{short .TurnID}}</td>
+        <td class="mono" style="color:var(--dim)"><pre>{{raw .}}</pre></td></tr>
+    {{end}}
+  </table>{{else}}<p class="empty">No events.</p>{{end}}</div>
+  </details>
+</section>
+{{if .Older}}<p><a class="back" href="?before={{.Older}}">Older events</a> <a class="back" href="/c/{{.Conv.ID}}">Latest events</a></p>{{end}}
+<div class="bottomnav"><a class="back" href="/">&larr; all conversations</a></div>
+{{template "foot"}}

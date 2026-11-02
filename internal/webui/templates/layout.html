@@ -1,0 +1,96 @@
+{{define "head"}}<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{.}} · agent-hub</title>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#0c0d0f; --panel:#151719; --line:#34383c; --ink:#e5e5e2; --dim:#b8babd;
+  --run:#91bfa4; --wait:#cdb380; --bad:#d4969a; --cold:#aeb0b5; --accent:#c5c8ca;
+  --raised:#1c1f22;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh}
+a{color:var(--accent);text-underline-offset:3px}
+a:hover{color:#ffffff}
+::selection{background:#494d51;color:#fff}
+header{display:flex;gap:1rem;align-items:baseline;padding:.9rem 1.4rem;
+  border-bottom:1px solid #323639;background:#121416;position:sticky;top:0;z-index:2;box-shadow:0 4px 18px #0003}
+header h1{font-size:16px;margin:0;font-weight:750;letter-spacing:-.02em}
+header h1::before{content:"";display:inline-block;width:8px;height:8px;margin-right:10px;border-radius:50%;background:var(--run)}
+header a{text-decoration:none}
+header .clock{margin-left:auto;color:var(--dim);font-variant-numeric:tabular-nums}
+main{padding:1.6rem 1.2rem;max-width:1680px;margin:0 auto}
+section{margin-bottom:1.7rem}
+h2{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:#d1d2d0;
+  margin:0 0 .7rem;font-weight:750;display:flex;align-items:center;gap:.6rem}
+h2::before{content:"";width:3px;height:13px;border-radius:3px;background:var(--accent)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:auto;box-shadow:0 6px 22px #0002}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;
+  color:#c3c5c6;background:var(--raised);font-weight:700;padding:.7rem .8rem;border-bottom:1px solid #373c40}
+td{padding:.75rem .8rem;border-bottom:1px solid #2c3034;vertical-align:top}
+tr:last-child td{border-bottom:0}
+tr:hover td{background:#c5c8ca09}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
+.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+a.id{text-decoration:none}a.id:hover{text-decoration:underline}
+.tag{display:inline-block;padding:.12rem .5rem;border-radius:6px;font-size:11px;
+  font-weight:700;border:1px solid currentColor;white-space:nowrap;line-height:1.35}
+.t-running,.t-live{color:var(--run);background:#91bfa414}
+.t-queued,.t-needs_permission{color:var(--wait);background:#cdb38014}
+.t-failed,.t-stale,.t-interrupted{color:var(--bad);background:#d4969a14}
+.t-completed{color:#c1c6c2;background:#c5c8ca14}
+.t-cold,.t-closed{color:var(--cold);background:#aeb0b50a}
+.warn{color:var(--wait);font-weight:650}
+.empty{padding:1rem;color:var(--dim)}
+.stats{display:flex;gap:1.6rem;flex-wrap:wrap;padding:1.2rem;border-top:2px solid #42494b;background:var(--panel)}
+.stat b{display:block;font-size:22px;font-variant-numeric:tabular-nums;font-weight:750;color:#e6e6e2;letter-spacing:-.02em}
+.stat span{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#bfc1c2}
+button{font:inherit;font-size:13px;font-weight:650;padding:.4rem .8rem;border-radius:7px;
+  border:1px solid #4c5358;background:#272d31;color:#e5e5e2;cursor:pointer}
+button:hover{border-color:#80878c;background:#343b40}
+button.danger{color:var(--bad);border-color:#6b4b4d;background:#2b1e20}
+button.danger:hover{background:#3b292b;border-color:var(--bad)}
+form{display:inline}
+a.back{display:inline-block;padding:.3rem .7rem;border:1px solid #444a4f;
+  border-radius:7px;font-size:12px;font-weight:600;white-space:nowrap;text-decoration:none;background:#202427}
+a.back:hover{border-color:var(--accent);background:#303639}
+.bottomnav{padding:.7rem 0 1.6rem}
+pre{margin:0;white-space:pre-wrap;word-break:break-word}
+.msg{padding:1rem;border-bottom:1px solid var(--line);border-left:3px solid #7c8387}
+.msg:last-child{border-bottom:0}
+.msg .who{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#d1d2d0;font-weight:750;margin-bottom:.5rem}
+.msg.assistant{background:#91bfa406;border-left-color:var(--run)}
+.msg.assistant .who{color:var(--run)}
+.filters{display:flex;gap:.8rem;flex-wrap:wrap;align-items:end;padding:1.1rem}
+.filters label{display:flex;flex-direction:column;gap:.4rem;color:#c5c6c5;font-size:12px;font-weight:600}
+input,select{font:inherit;padding:.55rem .7rem;border:1px solid #444a4f;border-radius:7px;background:#101214;color:var(--ink);max-width:100%}
+input::placeholder{color:#a6a9ac;opacity:1}
+input[type=checkbox]{accent-color:#c5c8ca}
+:focus-visible{outline:2px solid #c5c8ca;outline-offset:3px}
+.filters input[type=search]{min-width:240px}.filters select{max-width:320px}
+.title{min-width:230px;max-width:420px}.title a{font-weight:650;color:#dededb;text-decoration:none}.title a:hover{color:#ffffff;text-decoration:underline}
+.subtle{font-size:13px;color:var(--dim)}.toolbar{display:flex;gap:1rem;align-items:center;flex-wrap:wrap;margin-bottom:1.1rem}
+.num .subtle{font-size:11px;color:#b9bcbc;margin-top:.25rem}
+.pager{display:flex;gap:1rem;align-items:center;padding:.5rem 0 1rem}
+.pager a{padding:.35rem .7rem;border:1px solid var(--line);border-radius:7px;text-decoration:none;background:var(--panel)}
+details{border:1px solid var(--line);border-radius:10px;background:#131517;padding:.85rem 1rem}
+summary{color:#d1d2d0;cursor:pointer;font-size:13px;font-weight:650}
+details[open] summary{margin-bottom:.8rem}
+@media(max-width:700px){header{flex-wrap:wrap;padding:.8rem}main{padding:.9rem .7rem}.filters{align-items:stretch}.filters label{width:100%}.filters select{max-width:100%}.stats{gap:1rem}.stat b{font-size:20px}}
+</style></head><body>
+<header><h1><a href="/" style="color:inherit">agent-hub</a></h1>
+{{end}}
+
+{{define "foot"}}</main>
+<script>
+// Never reload while the operator is editing, selecting text, or inspecting history.
+let dirty=false;
+document.addEventListener('input',()=>{dirty=true});
+document.addEventListener('change',()=>{dirty=true});
+const live=document.getElementById('live-refresh');
+if(live){live.checked=sessionStorage.getItem('hub-live')==='yes';live.addEventListener('change',()=>{sessionStorage.setItem('hub-live',live.checked?'yes':'no');dirty=false});}
+setInterval(()=>{if(live&&live.checked&&!dirty&&!document.hidden&&!document.activeElement.closest('form')&&!window.getSelection().toString()){location.reload()}},5000);
+</script></body></html>{{end}}

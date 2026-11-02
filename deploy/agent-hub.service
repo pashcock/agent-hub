@@ -1,0 +1,15 @@
+[Unit]
+Description=Agent Hub - local coordination daemon for native coding agents
+After=default.target
+
+[Service]
+Type=simple
+ExecStart=%h/go/bin/agent-hub serve
+Restart=on-failure
+RestartSec=2
+# The daemon inherits the user environment on purpose: peer MCP servers
+# depend on it. Only the hub's own bearer token is removed per child.
+Environment=GOMAXPROCS=4
+
+[Install]
+WantedBy=default.target

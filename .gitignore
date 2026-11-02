@@ -1,0 +1,14 @@
+/agent-hub
+/dist/
+*.db
+*.db-wal
+*.db-shm
+
+# Local credentials and runtime output must never be committed.
+.env
+.env.*
+!.env.example
+auth.json
+credentials.json
+/token
+*.log

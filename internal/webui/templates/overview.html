@@ -1,0 +1,120 @@
+{{template "head" "overview"}}
+<span class="mono" style="color:var(--dim)">This page: {{len .Live}} running · {{len .Queued}} queued · {{len .Approvals}} approvals across hub</span>
+<span class="clock mono">{{.Now}}</span>
+</header>
+
+<main>
+{{if .Preview}}<p class="card" style="padding:16px">Read-only preview · database snapshot · agents disconnected · controls disabled. Production hub is unchanged.</p>{{end}}
+<div class="toolbar"><h1 style="margin:0;font-size:24px">Agent workspace</h1><span class="subtle">Local sessions, availability and performance</span><label style="margin-left:auto"><input type="checkbox" id="live-refresh"> Live · 5s</label></div>
+<section class="card">
+<form method="get" class="filters">
+<label>Search messages, paths, IDs<input type="search" name="q" value="{{.Filter.Query}}" placeholder="Task, error or conversation…"></label>
+<label>Search mode<select name="search"><option value="literal" {{if ne .SearchMode "hybrid"}}selected{{end}}>Exact text</option><option value="hybrid" {{if eq .SearchMode "hybrid"}}selected{{end}}>Text + meaning (local)</option></select></label>
+<label>Workspace<select name="cwd"><option value="">All workspaces</option>{{range .Workspaces}}<option value="{{.}}" {{if eq $.Filter.Cwd .}}selected{{end}}>{{.}}</option>{{end}}</select></label>
+<label>Agent<select name="agent"><option value="">All agents</option>{{range .Agents}}<option {{if eq $.Filter.Agent .Name}}selected{{end}}>{{.Name}}</option>{{end}}</select></label>
+<label>Model<input name="model" value="{{.Filter.Model}}" placeholder="Exact model ID"></label>
+<label>State<select name="status"><option value="">All states</option><option {{if eq .Filter.Status "running"}}selected{{end}}>running</option><option {{if eq .Filter.Status "needs_permission"}}selected{{end}}>needs_permission</option><option {{if eq .Filter.Status "queued"}}selected{{end}}>queued</option><option {{if eq .Filter.Status "completed"}}selected{{end}}>completed</option><option {{if eq .Filter.Status "failed"}}selected{{end}}>failed</option><option {{if eq .Filter.Status "interrupted"}}selected{{end}}>interrupted</option><option {{if eq .Filter.Status "cold"}}selected{{end}}>cold</option><option {{if eq .Filter.Status "closed"}}selected{{end}}>closed</option></select></label>
+<label>Created<select name="period"><option value="">All time</option><option value="24h" {{if eq .Period "24h"}}selected{{end}}>Last 24 hours</option><option value="7d" {{if eq .Period "7d"}}selected{{end}}>Last 7 days</option><option value="30d" {{if eq .Period "30d"}}selected{{end}}>Last 30 days</option></select></label>
+<button>Search</button><a class="back" href="/">Reset</a>
+</form>
+{{with .SearchNotice}}<p class="subtle" role="status">{{.}}</p>{{end}}
+</section>
+
+
+{{if .Approvals}}
+<section>
+  <h2>Waiting for you</h2>
+  <div class="card"><table>
+    <tr><th>request</th><th>class</th><th>command</th><th>cwd</th><th></th></tr>
+    {{range .Approvals}}
+    <tr>
+      <td class="mono">{{.ID}}{{if .HumanGated}} <span class="tag t-queued">human</span>{{end}}</td>
+      <td>{{.Class}}</td>
+      <td class="mono">{{trim .Command 70}}</td>
+      <td class="mono" style="color:var(--dim)">{{trim .Cwd 40}}</td>
+      <td style="white-space:nowrap">
+        <form method="post" action="/act/approve"><input type="hidden" name="request" value="{{.ID}}">
+          <input type="hidden" name="decision" value="accept"><input type="hidden" name="back" value="/">
+          <button>accept</button></form>
+        <form method="post" action="/act/approve"><input type="hidden" name="request" value="{{.ID}}">
+          <input type="hidden" name="decision" value="decline"><input type="hidden" name="back" value="/">
+          <button class="danger">decline</button></form>
+      </td>
+    </tr>{{end}}
+  </table></div>
+</section>
+{{end}}
+
+<section>
+  <h2>Agents</h2>
+  <div class="card"><table>
+    <tr><th>agent</th><th>availability</th><th>processes</th><th>steer</th><th>approvals</th><th>read-only</th><th>operator control</th></tr>
+    {{range .Agents}}
+    <tr>
+      <td><b>{{.Name}}</b></td>
+<td>{{if .Availability.Paused}}<span class="tag t-queued">paused</span><div class="subtle">{{.Availability.Reason}}{{with .Availability.Until}}<br>until {{.Format "02 Jan 15:04 MST"}}{{end}}</div>{{else}}<span class="tag t-live">available</span>{{end}}</td>
+      <td class="mono">{{if .Limit}}{{.Used}} / {{.Limit}}{{if ge .Used .Limit}} <span class="warn">full</span>{{end}}{{else}}{{.Used}} threads, no limit{{end}}</td>
+      <td>{{if .Profile.Steer}}mid-turn{{else}}unsupported{{end}}</td>
+      <td>{{if .Profile.Approvals}}yes{{else}}none raised{{end}}</td>
+      <td>{{if .Profile.SandboxedReadOnly}}sandbox verified{{else}}not verified{{end}}</td>
+<td><form method="post" action="/act/provider"><input type="hidden" name="agent" value="{{.Name}}"><input type="hidden" name="back" value="/">
+{{if .Availability.Paused}}<input type="hidden" name="action" value="resume"><button>Resume</button>{{else}}<input type="hidden" name="action" value="pause"><input name="reason" aria-label="Pause reason for {{.Name}}" placeholder="Reason (e.g. quota)" size="17"><select name="duration" aria-label="Pause duration"><option value="">Until resumed</option><option value="1h">1 hour</option><option value="5h">5 hours</option><option value="24h">24 hours</option></select> <button>Pause</button>{{end}}</form></td>
+    </tr>{{end}}
+  </table></div>
+</section>
+
+<section>
+  <h2>Spend, all time</h2>
+  <div class="card stats">
+    <div class="stat"><b>{{tokens .Total}}</b><span>tokens</span></div>
+    <div class="stat"><b>{{money .Total.CostUSD}}</b><span>reported cost</span></div>
+    <div class="stat"><b>{{thousands .Total.InputTokens}}</b><span>input</span></div>
+    <div class="stat"><b>{{thousands .Total.CachedInput}}</b><span>cached input · reported</span></div>
+    <div class="stat"><b>{{thousands .Total.OutputTokens}}</b><span>output</span></div>
+    <div class="stat"><b>{{thousands .Total.CacheWrite}}</b><span>cache write</span></div>
+    <div class="stat"><b>{{thousands .Total.ReasoningTokens}}</b><span>reasoning</span></div>
+  </div>
+  <p style="color:var(--dim);font-size:12px;margin:.4rem 0 0">
+    Cost is provider-reported by Claude and Grok when available. Missing cost is not zero; totals are not your subscription balance. These totals cover all history, independently of filters.</p>
+</section>
+
+{{define "convtable"}}
+<div class="card">{{if .}}<table>
+  <tr><th>task / conversation</th><th>agent / model</th><th>mode</th><th>state</th><th>cwd</th>
+      <th class="num">tokens</th><th class="num">cost</th><th>created / elapsed</th><th></th></tr>
+  {{range .}}
+  <tr>
+    <td class="title"><a href="/c/{{.ID}}">{{trim .Title 100}}</a><div class="mono subtle">{{short .ID}}</div>{{with .Match}}<div class="subtle">{{if .Exact}}literal match{{else}}meaning match{{end}} · similarity {{printf "%.2f" .Score}}</div><p style="white-space:pre-wrap;overflow-wrap:anywhere">{{.Snippet}}</p>{{end}}</td>
+    <td>{{.PeerAgent}}<div class="mono subtle">{{.Model}}</div></td>
+    <td>{{if .Mode}}{{.Mode}}{{else}}ask{{end}}</td>
+    <td>
+      <span class="tag t-{{.Status}}">{{.Status}}</span>
+      {{if .TurnStatus}}<span class="tag t-{{.TurnStatus}}">{{.TurnStatus}}</span>{{end}}
+      {{if .Stalled}}<span class="warn">quiet {{.SilentForS}}s</span>{{end}}
+      {{if .Activity}}<div class="mono" style="color:var(--dim);font-size:11px">{{trim .Activity 60}}</div>{{end}}
+    </td>
+    <td class="mono" style="color:var(--dim);max-width:280px;overflow-wrap:anywhere" title="{{.ProjectCwd}}">{{.ProjectCwd}}</td>
+    <td class="num mono">{{tokens .Usage}}<div class="subtle">cached {{cachedInput .PeerAgent .Usage}}</div></td>
+    <td class="num mono">{{money .Usage.CostUSD}}</td>
+    <td class="mono subtle">{{.Created}}{{with .Timings}}<br>{{ms .TotalMS}}{{end}}</td>
+    <td>{{if or (eq .TurnStatus "running") (eq .Status "queued")}}
+      <form method="post" action="/act/cancel"><input type="hidden" name="conversation" value="{{.ID}}">
+        <input type="hidden" name="back" value="/"><button class="danger">cancel</button></form>
+    {{end}}</td>
+  </tr>{{end}}
+</table>{{else}}<p class="empty">Nothing here.</p>{{end}}</div>
+{{end}}
+
+<section><h2>Performance · matching conversations</h2><p class="subtle">Time means use completed turns only. They include tool work; they are not generation tokens/second or quality scores. First text is measured from prompt submission. Historical turns without instrumentation are excluded from time averages.</p>
+<div class="card"><table><tr><th>Agent / model</th><th>Finished</th><th>Completed / failed</th><th>Timed samples</th><th>Mean total</th><th>Mean first text / samples</th><th>Mean approval wait / samples</th></tr>
+{{range .Metrics}}<tr><td>{{.Agent}} · <span class="mono">{{.Model}}</span></td><td>{{.Turns}}</td><td>{{.Completed}} / {{.Failed}}</td><td>{{.Measured}}</td><td>{{averageMS .AverageTotalMS}}</td><td>{{averageMS .AverageFirstTextMS}} / {{.FirstTextSamples}}</td><td>{{averageMS .AverageApprovalMS}} / {{.ApprovalSamples}}</td></tr>{{else}}<tr><td colspan="7">No finished turns match.</td></tr>{{end}}</table></div></section>
+<div class="toolbar"><b>{{.Count}} matching conversations</b><span class="subtle">Workspace matches the exact cwd; linked worktrees remain separate. Up to 50 rows per page.</span></div>
+{{if .Ranked}}
+<section><h2>Search results · relevance</h2>{{template "convtable" .Matches}}</section>
+{{else}}
+<section><h2>Running · this page</h2>{{template "convtable" .Live}}</section>
+{{if .Queued}}<section><h2>Queued</h2>{{template "convtable" .Queued}}</section>{{end}}
+<section><h2>Other conversations · this page</h2>{{template "convtable" .Done}}</section>
+{{end}}
+<nav class="pager">{{if .Previous}}<a href="{{.Previous}}">← Previous</a>{{end}}<span>Page {{.Page}}</span>{{if .Next}}<a href="{{.Next}}">Next →</a>{{end}}</nav>
+{{template "foot"}}
